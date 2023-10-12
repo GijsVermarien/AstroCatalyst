@@ -14,14 +14,14 @@ pmass = 1.6726219e-24  # g
 mu = 2.34
 seconds_per_year = 3600 * 24 * 365
 gamma_ad = 1.4
-gnot = 1e0
+gnot = 1e1
 # Simulation parameters:
-number_density = 1e4
-dust2gas = 0.01
+number_density = 1e5
+# dust2gas = 0.01
 minimum_fractional_density = 1e-30 * number_density
 
-@register_symbolic get_heating(H, H2, E, tgas, ntot)
-function get_heating(H, H2, E, tgas, ntot)
+# @register_symbolic get_heating(H, H2, E, tgas, ntot, dust2gas)
+function get_heating(H, H2, E, tgas, ntot, dust2gas)
     """
        get_heating(x, tgas, cr_rate, gnot)
 
@@ -44,15 +44,15 @@ function get_heating(H, H2, E, tgas, ntot)
     rate_H2 = 5.68e-11 * gnot
     heats = [
         cosmic_ionisation_rate * (5.5e-12 * H + 2.5e-11 * H2),
-        get_photoelectric_heating(H, E, tgas, gnot, ntot),
+        get_photoelectric_heating(H, E, tgas, gnot, ntot, dust2gas),
         6.4e-13 * rate_H2 * H2,
     ]
 
     return sum(heats)
 end
 
-@register_symbolic get_photoelectric_heating(H, E, tgas, gnot, ntot)
-function get_photoelectric_heating(H, E, tgas, gnot, ntot)
+# @register_symbolic get_photoelectric_heating(H, E, tgas, gnot, ntot, dust2gas)
+function get_photoelectric_heating(H, E, tgas, gnot, ntot, dust2gas)
     """
        get_photoelectric_heating(x, tgas, gnot)
 
@@ -82,7 +82,7 @@ function get_photoelectric_heating(H, E, tgas, gnot, ntot)
     return (1.3e-24 * eps * gnot * ntot - recomb_cool) * dust2gas
 end
 
-@register_symbolic get_cooling(H, H2, O, E, tgas)
+# @register_symbolic get_cooling(H, H2, O, E, tgas)
 function get_cooling(H, H2, O, E, tgas)
     """
        get_cooling(x, tgas)
@@ -212,9 +212,9 @@ function cooling_H2(H, H2, temp)
     return cool
 end
 
-function get_heating_cooling(T, H2, O, C, O⁺, OH⁺, H, H2O⁺, H3O⁺, E, H2O, OH, C⁺, CO, CO⁺, H⁺, HCO⁺)
+function get_heating_cooling(T, H2, O, C, O⁺, OH⁺, H, H2O⁺, H3O⁺, E, H2O, OH, C⁺, CO, CO⁺, H⁺, HCO⁺, dust2gas)
     ntot = get_ntot(H2, O, C, O⁺, OH⁺, H, H2O⁺, H3O⁺, E, H2O, OH, C⁺, CO, CO⁺, H⁺, HCO⁺)
-    return (gamma_ad - 1e0) * (get_heating(H, H2, E, T, ntot) - get_cooling(H, H2, O, E, T)) / kboltzmann / ntot
+    return (gamma_ad - 1e0) * (get_heating(H, H2, E, T, ntot, dust2gas) - get_cooling(H, H2, O, E, T)) / kboltzmann / ntot
 end
 
 function get_ntot(H2, O, C, O⁺, OH⁺, H, H2O⁺, H3O⁺, E, H2O, OH, C⁺, CO, CO⁺, H⁺, HCO⁺)
@@ -257,7 +257,7 @@ reaction_equations = [
 	(@reaction 3.39e-10 * radiation_field, $C --> $C⁺ + $E),
 	(@reaction 2.43e-10 * radiation_field, $CO --> $C + $O),
 	(@reaction 7.72e-10 * radiation_field, $H2O --> $OH + $H),
-    (D(T) ~ get_heating_cooling(T, H2, O, C, O⁺, OH⁺, H, H2O⁺, H3O⁺, E, H2O, OH, C⁺, CO, CO⁺, H⁺, HCO⁺)) 
+    # (D(T) ~ get_heating_cooling(T, H2, O, C, O⁺, OH⁺, H, H2O⁺, H3O⁺, E, H2O, OH, C⁺, CO, CO⁺, H⁺, HCO⁺, dust2gas)) 
 ]
 
 @named system = ReactionSystem(reaction_equations, t)
@@ -279,81 +279,13 @@ sys = convert(ODESystem,system)
 
 oprob = ODEProblem(sys, [], tspan, params)
 println("Created the ODEproblem.")
-sol = solve(oprob, Tsit5())
+sol = solve(oprob, Tsit5()) # Rodas5()) # Tsit5()
 println("Solved the ODE")
 # println(sol)
 
-# plot(sol)
-# plot!(xcsale=:log10, yscale=:log10)
-# plot!(legend=:outerbottom, legendcolumns=3)
+plot(sol)
+plot!(xcsale=:log10, yscale=:log10)
+plot!(legend=:outerbottom, legendcolumns=3)
 
-# a = Array(sol)
-# plot(a[17, :])
-
-using LinearAlgebra
-prob = begin
-    #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:1165 =#
-    f = begin
-            #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:743 =#
-            var"##f#525" = (ModelingToolkit.ODEFunctionClosure)(function (ˍ₋arg1, ˍ₋arg2, t)
-                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:373 =#
-                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:374 =#
-                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:375 =#
-                        begin
-                            begin
-                                #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:468 =#
-                                (SymbolicUtils.Code.create_array)(typeof(ˍ₋arg1), nothing, Val{1}(), Val{(17,)}(), (+)((+)((/)((*)((*)(-3.4e-12, ˍ₋arg1[7]), ˍ₋arg1[1]), (*)(0.027505124147434282, (^)(ˍ₋arg2[1], 0.63))), (*)((*)(-1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1])), (*)((*)(2.8, ˍ₋arg2[2]), ˍ₋arg1[10])), (+)((+)((+)((+)((+)((+)((/)((*)((*)(3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (*)((*)(1.0605e-15, ˍ₋arg2[3]), (^)(ˍ₋arg1[4], 2))), (*)((*)(-6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5])), (*)((*)(-0.1, ˍ₋arg2[2]), ˍ₋arg1[2])), (*)((*)(-7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2])), (*)((*)(-1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3])), (*)((*)(-1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1])), (+)((+)((/)((*)((*)(-6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48))), (*)((*)(-1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3])), (*)((*)(1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1])), (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((/)((*)((*)(8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (/)((*)((*)(3.5e-12, ˍ₋arg1[7]), ˍ₋arg1[15]), (*)(0.01845079661875638, (^)(ˍ₋arg2[1], 0.7)))), (/)((*)((*)(1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (/)((*)((*)(6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48)))), (/)((*)((*)(1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69)))), (*)((*)(-2.121e-15, ˍ₋arg2[3]), (^)(ˍ₋arg1[4], 2))), (*)((*)(7.72e-10, ˍ₋arg2[4]), ˍ₋arg1[8])), (*)((*)(-4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4])), (*)((*)(6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5])), (*)((*)(0.2, ˍ₋arg2[2]), ˍ₋arg1[2])), (*)((*)(7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2])), (*)((*)(1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3])), (*)((*)(1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1])), (*)((*)((*)(9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9])), (+)((+)((+)((/)((*)((*)(-3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (/)((*)((*)(-8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (*)((*)(-6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5])), (*)((*)(1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3])), (+)((/)((*)((*)(-1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (*)((*)(6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5])), (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((/)((*)((*)(-4.4e-12, ˍ₋arg1[12]), ˍ₋arg1[7]), (*)(0.030828758425176017, (^)(ˍ₋arg2[1], 0.61))), (/)((*)((*)(-3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(-8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(-1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(-2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69)))), (/)((*)((*)(-3.4e-12, ˍ₋arg1[7]), ˍ₋arg1[1]), (*)(0.027505124147434282, (^)(ˍ₋arg2[1], 0.63)))), (/)((*)((*)(-3.5e-12, ˍ₋arg1[7]), ˍ₋arg1[15]), (*)(0.01845079661875638, (^)(ˍ₋arg2[1], 0.7)))), (/)((*)((*)(-6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48)))), (*)((*)(3.39e-10, ˍ₋arg2[4]), ˍ₋arg1[11])), (*)((*)(2.62, ˍ₋arg2[2]), ˍ₋arg1[11])), (*)((*)(2.8, ˍ₋arg2[2]), ˍ₋arg1[10])), (+)((/)((*)((*)(1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (*)((*)(-7.72e-10, ˍ₋arg2[4]), ˍ₋arg1[8])), (+)((+)((+)((/)((*)((*)(8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (/)((*)((*)(-1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (*)((*)(7.72e-10, ˍ₋arg2[4]), ˍ₋arg1[8])), (*)((*)((*)(-9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9])), (+)((+)((+)((+)((+)((/)((*)((*)(3.4e-12, ˍ₋arg1[7]), ˍ₋arg1[1]), (*)(0.027505124147434282, (^)(ˍ₋arg2[1], 0.63))), (/)((*)((*)(6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48)))), (/)((*)((*)(3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (*)((*)(2.43e-10, ˍ₋arg2[4]), ˍ₋arg1[13])), (*)((*)(5.0, ˍ₋arg2[2]), ˍ₋arg1[13])), (*)((*)(-2.8, ˍ₋arg2[2]), ˍ₋arg1[10])), (+)((+)((+)((+)((/)((*)((*)(4.4e-12, ˍ₋arg1[12]), ˍ₋arg1[7]), (*)(0.030828758425176017, (^)(ˍ₋arg2[1], 0.61))), (*)((*)(-3.39e-10, ˍ₋arg2[4]), ˍ₋arg1[11])), (*)((*)(2.43e-10, ˍ₋arg2[4]), ˍ₋arg1[13])), (*)((*)(-2.62, ˍ₋arg2[2]), ˍ₋arg1[11])), (*)((*)(5.0, ˍ₋arg2[2]), ˍ₋arg1[13])), (+)((+)((+)((+)((/)((*)((*)(-4.4e-12, ˍ₋arg1[12]), ˍ₋arg1[7]), (*)(0.030828758425176017, (^)(ˍ₋arg2[1], 0.61))), (/)((*)((*)(-1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (*)((*)(3.39e-10, ˍ₋arg2[4]), ˍ₋arg1[11])), (*)((*)(2.62, ˍ₋arg2[2]), ˍ₋arg1[11])), (*)((*)((*)(-9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9])), (+)((+)((+)((+)((/)((*)((*)(2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69))), (/)((*)((*)(1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (*)((*)(-2.43e-10, ˍ₋arg2[4]), ˍ₋arg1[13])), (*)((*)(4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4])), (*)((*)(-5.0, ˍ₋arg2[2]), ˍ₋arg1[13])), (+)((+)((*)((*)(-4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4]), (*)((*)(-7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2])), (*)((*)((*)(9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9])), (+)((/)((*)((*)(-3.5e-12, ˍ₋arg1[7]), ˍ₋arg1[15]), (*)(0.01845079661875638, (^)(ˍ₋arg2[1], 0.7))), (*)((*)(4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4])), (+)((/)((*)((*)(-2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69))), (*)((*)(7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2])), (/)((*)(2.897189213660258e15, (+)((*)(-1, (get_cooling)(ˍ₋arg1[4], ˍ₋arg1[2], ˍ₋arg1[10], ˍ₋arg1[7], ˍ₋arg1[17])), (get_heating)(ˍ₋arg1[4], ˍ₋arg1[2], ˍ₋arg1[7], ˍ₋arg1[17], (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)(ˍ₋arg1[11], ˍ₋arg1[13]), ˍ₋arg1[14]), ˍ₋arg1[12]), ˍ₋arg1[7]), ˍ₋arg1[4]), ˍ₋arg1[2]), ˍ₋arg1[8]), ˍ₋arg1[5]), ˍ₋arg1[6]), ˍ₋arg1[16]), ˍ₋arg1[15]), ˍ₋arg1[10]), ˍ₋arg1[9]), ˍ₋arg1[3]), ˍ₋arg1[1])))), (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)(ˍ₋arg1[11], ˍ₋arg1[13]), ˍ₋arg1[14]), ˍ₋arg1[12]), ˍ₋arg1[7]), ˍ₋arg1[4]), ˍ₋arg1[2]), ˍ₋arg1[8]), ˍ₋arg1[5]), ˍ₋arg1[6]), ˍ₋arg1[16]), ˍ₋arg1[15]), ˍ₋arg1[10]), ˍ₋arg1[9]), ˍ₋arg1[3]), ˍ₋arg1[1])))
-                            end
-                        end
-                    end, function (ˍ₋out, ˍ₋arg1, ˍ₋arg2, t)
-                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:373 =#
-                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:374 =#
-                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:375 =#
-                        begin
-                            begin
-                                #= /Users/gijsv/.julia/packages/Symbolics/3ueSK/src/build_function.jl:537 =#
-                                #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:422 =# @inbounds begin
-                                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:418 =#
-                                        ˍ₋out[1] = (+)((+)((/)((*)((*)(-3.4e-12, ˍ₋arg1[7]), ˍ₋arg1[1]), (*)(0.027505124147434282, (^)(ˍ₋arg2[1], 0.63))), (*)((*)(-1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1])), (*)((*)(2.8, ˍ₋arg2[2]), ˍ₋arg1[10]))
-                                        ˍ₋out[2] = (+)((+)((+)((+)((+)((+)((/)((*)((*)(3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (*)((*)(1.0605e-15, ˍ₋arg2[3]), (^)(ˍ₋arg1[4], 2))), (*)((*)(-6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5])), (*)((*)(-0.1, ˍ₋arg2[2]), ˍ₋arg1[2])), (*)((*)(-7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2])), (*)((*)(-1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3])), (*)((*)(-1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1]))
-                                        ˍ₋out[3] = (+)((+)((/)((*)((*)(-6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48))), (*)((*)(-1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3])), (*)((*)(1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1]))
-                                        ˍ₋out[4] = (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((/)((*)((*)(8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (/)((*)((*)(3.5e-12, ˍ₋arg1[7]), ˍ₋arg1[15]), (*)(0.01845079661875638, (^)(ˍ₋arg2[1], 0.7)))), (/)((*)((*)(1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (/)((*)((*)(6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48)))), (/)((*)((*)(1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69)))), (*)((*)(-2.121e-15, ˍ₋arg2[3]), (^)(ˍ₋arg1[4], 2))), (*)((*)(7.72e-10, ˍ₋arg2[4]), ˍ₋arg1[8])), (*)((*)(-4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4])), (*)((*)(6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5])), (*)((*)(0.2, ˍ₋arg2[2]), ˍ₋arg1[2])), (*)((*)(7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2])), (*)((*)(1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3])), (*)((*)(1.6e-9, ˍ₋arg1[2]), ˍ₋arg1[1])), (*)((*)((*)(9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9]))
-                                        ˍ₋out[5] = (+)((+)((+)((/)((*)((*)(-3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (/)((*)((*)(-8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (*)((*)(-6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5])), (*)((*)(1.0e-9, ˍ₋arg1[2]), ˍ₋arg1[3]))
-                                        ˍ₋out[6] = (+)((/)((*)((*)(-1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (*)((*)(6.1e-10, ˍ₋arg1[2]), ˍ₋arg1[5]))
-                                        ˍ₋out[7] = (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((/)((*)((*)(-4.4e-12, ˍ₋arg1[12]), ˍ₋arg1[7]), (*)(0.030828758425176017, (^)(ˍ₋arg2[1], 0.61))), (/)((*)((*)(-3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(-8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(-1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (/)((*)((*)(-2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69)))), (/)((*)((*)(-3.4e-12, ˍ₋arg1[7]), ˍ₋arg1[1]), (*)(0.027505124147434282, (^)(ˍ₋arg2[1], 0.63)))), (/)((*)((*)(-3.5e-12, ˍ₋arg1[7]), ˍ₋arg1[15]), (*)(0.01845079661875638, (^)(ˍ₋arg2[1], 0.7)))), (/)((*)((*)(-6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48)))), (*)((*)(3.39e-10, ˍ₋arg2[4]), ˍ₋arg1[11])), (*)((*)(2.62, ˍ₋arg2[2]), ˍ₋arg1[11])), (*)((*)(2.8, ˍ₋arg2[2]), ˍ₋arg1[10]))
-                                        ˍ₋out[8] = (+)((/)((*)((*)(1.1e-7, ˍ₋arg1[7]), ˍ₋arg1[6]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (*)((*)(-7.72e-10, ˍ₋arg2[4]), ˍ₋arg1[8]))
-                                        ˍ₋out[9] = (+)((+)((+)((/)((*)((*)(8.6e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5))), (/)((*)((*)(-1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (*)((*)(7.72e-10, ˍ₋arg2[4]), ˍ₋arg1[8])), (*)((*)((*)(-9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9]))
-                                        ˍ₋out[10] = (+)((+)((+)((+)((+)((/)((*)((*)(3.4e-12, ˍ₋arg1[7]), ˍ₋arg1[1]), (*)(0.027505124147434282, (^)(ˍ₋arg2[1], 0.63))), (/)((*)((*)(6.3e-9, ˍ₋arg1[7]), ˍ₋arg1[3]), (*)(0.06471154931041326, (^)(ˍ₋arg2[1], 0.48)))), (/)((*)((*)(3.9e-8, ˍ₋arg1[7]), ˍ₋arg1[5]), (*)(0.05773502691896258, (^)(ˍ₋arg2[1], 0.5)))), (*)((*)(2.43e-10, ˍ₋arg2[4]), ˍ₋arg1[13])), (*)((*)(5.0, ˍ₋arg2[2]), ˍ₋arg1[13])), (*)((*)(-2.8, ˍ₋arg2[2]), ˍ₋arg1[10]))
-                                        ˍ₋out[11] = (+)((+)((+)((+)((/)((*)((*)(4.4e-12, ˍ₋arg1[12]), ˍ₋arg1[7]), (*)(0.030828758425176017, (^)(ˍ₋arg2[1], 0.61))), (*)((*)(-3.39e-10, ˍ₋arg2[4]), ˍ₋arg1[11])), (*)((*)(2.43e-10, ˍ₋arg2[4]), ˍ₋arg1[13])), (*)((*)(-2.62, ˍ₋arg2[2]), ˍ₋arg1[11])), (*)((*)(5.0, ˍ₋arg2[2]), ˍ₋arg1[13]))
-                                        ˍ₋out[12] = (+)((+)((+)((+)((/)((*)((*)(-4.4e-12, ˍ₋arg1[12]), ˍ₋arg1[7]), (*)(0.030828758425176017, (^)(ˍ₋arg2[1], 0.61))), (/)((*)((*)(-1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (*)((*)(3.39e-10, ˍ₋arg2[4]), ˍ₋arg1[11])), (*)((*)(2.62, ˍ₋arg2[2]), ˍ₋arg1[11])), (*)((*)((*)(-9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9]))
-                                        ˍ₋out[13] = (+)((+)((+)((+)((/)((*)((*)(2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69))), (/)((*)((*)(1.15e-10, ˍ₋arg1[12]), ˍ₋arg1[9]), (*)(0.14462917025834096, (^)(ˍ₋arg2[1], 0.339)))), (*)((*)(-2.43e-10, ˍ₋arg2[4]), ˍ₋arg1[13])), (*)((*)(4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4])), (*)((*)(-5.0, ˍ₋arg2[2]), ˍ₋arg1[13]))
-                                        ˍ₋out[14] = (+)((+)((*)((*)(-4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4]), (*)((*)(-7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2])), (*)((*)((*)(9.15e-10, (+)(0.62, (*)(2.6218500000000002, (sqrt)((/)(300, ˍ₋arg2[1]))))), ˍ₋arg1[12]), ˍ₋arg1[9]))
-                                        ˍ₋out[15] = (+)((/)((*)((*)(-3.5e-12, ˍ₋arg1[7]), ˍ₋arg1[15]), (*)(0.01845079661875638, (^)(ˍ₋arg2[1], 0.7))), (*)((*)(4.0e-10, ˍ₋arg1[14]), ˍ₋arg1[4]))
-                                        ˍ₋out[16] = (+)((/)((*)((*)(-2.8e-7, ˍ₋arg1[7]), ˍ₋arg1[16]), (*)(0.019533781893248173, (^)(ˍ₋arg2[1], 0.69))), (*)((*)(7.28e-10, ˍ₋arg1[14]), ˍ₋arg1[2]))
-                                        ˍ₋out[17] = @show (/)((*)(2.897189213660258e15, (+)((*)(-1, (get_cooling)(ˍ₋arg1[4], ˍ₋arg1[2], ˍ₋arg1[10], ˍ₋arg1[7], ˍ₋arg1[17])), (get_heating)(ˍ₋arg1[4], ˍ₋arg1[2], ˍ₋arg1[7], ˍ₋arg1[17], (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)(ˍ₋arg1[11], ˍ₋arg1[13]), ˍ₋arg1[14]), ˍ₋arg1[12]), ˍ₋arg1[7]), ˍ₋arg1[4]), ˍ₋arg1[2]), ˍ₋arg1[8]), ˍ₋arg1[5]), ˍ₋arg1[6]), ˍ₋arg1[16]), ˍ₋arg1[15]), ˍ₋arg1[10]), ˍ₋arg1[9]), ˍ₋arg1[3]), ˍ₋arg1[1])))), (+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)((+)(ˍ₋arg1[11], ˍ₋arg1[13]), ˍ₋arg1[14]), ˍ₋arg1[12]), ˍ₋arg1[7]), ˍ₋arg1[4]), ˍ₋arg1[2]), ˍ₋arg1[8]), ˍ₋arg1[5]), ˍ₋arg1[6]), ˍ₋arg1[16]), ˍ₋arg1[15]), ˍ₋arg1[10]), ˍ₋arg1[9]), ˍ₋arg1[3]), ˍ₋arg1[1]))
-                                        #= /Users/gijsv/.julia/packages/SymbolicUtils/Oyu8Z/src/code.jl:420 =#
-                                        nothing
-                                    end
-                            end
-                        end
-                    end)
-            #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:744 =#
-            var"##tgrad#526" = nothing
-            #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:745 =#
-            var"##jac#527" = nothing
-            #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:746 =#
-            M = LinearAlgebra.UniformScaling{Bool}(true)
-            #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:747 =#
-            ODEFunction{true}(var"##f#525", jac = var"##jac#527", tgrad = var"##tgrad#526", mass_matrix = M, jac_prototype = nothing, syms = [Symbol("O⁺(t)"), Symbol("H2(t)"), Symbol("OH⁺(t)"), Symbol("H(t)"), Symbol("H2O⁺(t)"), Symbol("H3O⁺(t)"), Symbol("E(t)"), Symbol("H2O(t)"), Symbol("OH(t)"), Symbol("O(t)"), Symbol("C(t)"), Symbol("C⁺(t)"), Symbol("CO(t)"), Symbol("CO⁺(t)"), Symbol("H⁺(t)"), Symbol("HCO⁺(t)"), Symbol("T(t)")], indepsym = :t, paramsyms = [:T, :cosmic_ionisation_rate, :dust2gas, :radiation_field], sparsity = nothing, observed = nothing)
-        end
-    #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:1166 =#
-    u0 = [1.0e-26, 10000.0, 1.0e-26, 1.0e-26, 1.0e-26, 1.0e-26, 1.0e-26, 1.0e-26, 1.0e-26, 2.0, 1.0, 1.0e-26, 1.0e-26, 1.0e-26, 1.0e-26, 1.0e-26, 100.0]
-    #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:1167 =#
-    tspan = (0.0, 3.1536e13)
-    #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:1168 =#
-    p = [100.0, 1.0e-17, 0.01, 0.1]
-    #= /Users/gijsv/.julia/packages/ModelingToolkit/BsHty/src/systems/diffeqs/abstractodesystem.jl:1169 =#
-    ODEProblem(f, u0, tspan, p; )
-end
-
-sol = solve(prob, Tsit5())
+a = Array(sol)
+plot(a[17, :])
