@@ -275,9 +275,9 @@ params = [dust2gas => 0.01, radiation_field => 1e-1, cosmic_ionisation_rate => 1
 println("Lets try to solve the ODE:")
 
 sys = convert(ODESystem,system)
-oprob = clipboard(ODEProblemExpr(sys, [], tspan, params))
+# oprob = ODEProblemExpr(sys, [], tspan, params)
 
-oprob = ODEProblem(system, [], tspan, params)
+oprob = ODEProblem(sys, [], tspan, params)
 println("Created the ODEproblem.")
 sol = solve(oprob, Tsit5())
 println("Solved the ODE")
